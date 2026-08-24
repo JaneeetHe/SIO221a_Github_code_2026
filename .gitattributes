@@ -1,0 +1,12 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Binary data -- never try to diff or merge these
+*.nc   binary
+*.mat  binary
+*.cdf  binary
+*.pdf  binary
+*.pptx binary
+
+# Notebooks are JSON; mark them so GitHub renders diffs sensibly
+*.ipynb text

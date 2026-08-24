@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# sio221a-lab -- start JupyterLab with a working MATLAB kernel, every time.
+#
+# The MATLAB kernel only shows up if JupyterLab is started from the Python
+# environment that has `jupyter-matlab-proxy` installed, AND that environment's
+# bin/ is on PATH (the kernel shells out to `matlab-proxy-app`, which lives
+# there), AND the `matlab` executable itself is on PATH.  Miss any one of those
+# and you get the "no kernel named jupyter_matlab_kernel" prompt.
+#
+# This script sets all three, then launches.  Run it instead of `jupyter lab`.
+#
+# One-time setup on a new computer:
+#   conda create -n jupyter python=3.11
+#   conda activate jupyter
+#   pip install jupyterlab jupyter-matlab-proxy
+#   pip install numpy scipy matplotlib netCDF4 xarray pandas    # for the Python notebooks
+#
+# Override the defaults with environment variables if your machine differs:
+#   SIO221A_JUPYTER_ENV   name of the conda env (default: jupyter)
+#   SIO221A_ROOT          path to your SIO221a_Github_code clone
+
+set -euo pipefail
+
+# --- 1. Find the conda environment that has JupyterLab -----------------------
+ENV_NAME="${SIO221A_JUPYTER_ENV:-jupyter}"
+CONDA_BASE="$(conda info --base 2>/dev/null || echo "$HOME/miniconda3")"
+ENV_DIR="$CONDA_BASE/envs/$ENV_NAME"
+
+if [ ! -x "$ENV_DIR/bin/jupyter" ]; then
+    echo "error: no jupyter in conda env '$ENV_NAME' (looked in $ENV_DIR)." >&2
+    echo "       See the one-time setup notes at the top of this script." >&2
+    exit 1
+fi
+export PATH="$ENV_DIR/bin:$PATH"
+
+if [ ! -x "$ENV_DIR/bin/matlab-proxy-app" ]; then
+    echo "error: jupyter-matlab-proxy is not installed in env '$ENV_NAME'." >&2
+    echo "       Fix with:  $ENV_DIR/bin/pip install jupyter-matlab-proxy" >&2
+    exit 1
+fi
+
+# --- 2. Make sure MATLAB itself is findable ----------------------------------
+if ! command -v matlab >/dev/null 2>&1; then
+    # Newest MATLAB in /Applications wins.
+    for d in $(ls -d /Applications/MATLAB_R*.app/bin 2>/dev/null | sort -r); do
+        export PATH="$d:$PATH"
+        break
+    done
+fi
+if ! command -v matlab >/dev/null 2>&1; then
+    echo "error: can't find the 'matlab' command." >&2
+    echo "       Add MATLAB's bin directory to your PATH." >&2
+    exit 1
+fi
+
+# --- 3. Use the license already activated on this machine --------------------
+# Without this the kernel opens a browser tab asking you to sign in to MathWorks
+# every session.
+export MWI_USE_EXISTING_LICENSE=True
+
+# --- 4. Tell the notebooks where the class repo is ---------------------------
+export SIO221A_ROOT="${SIO221A_ROOT:-$HOME/SIO221a_Github_code}"
+
+echo "MATLAB      : $(command -v matlab)"
+echo "Jupyter env : $ENV_DIR"
+echo "SIO221A_ROOT: $SIO221A_ROOT"
+echo
+
+exec jupyter lab "$@"

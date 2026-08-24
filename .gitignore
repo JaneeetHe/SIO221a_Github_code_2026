@@ -1,0 +1,32 @@
+# ---- Jupyter -----------------------------------------------------------
+.ipynb_checkpoints/
+.virtual_documents/
+*-checkpoint.ipynb
+
+# ---- Python ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---- MATLAB ------------------------------------------------------------
+*.asv
+*.m~
+slprj/
+
+# ---- LaTeX leftovers from nbconvert ------------------------------------
+*_files/
+*.aux
+*.log
+*.out
+notebook.tex
+
+# ---- macOS / editors ---------------------------------------------------
+.DS_Store
+._*
+.vscode/
+.idea/
+
+# ---- Keep student submissions out of this repo -------------------------
+# Homework goes in YOUR fork, not here.  See CONTRIBUTING.md.
+submissions/
