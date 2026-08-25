@@ -25,6 +25,21 @@ environment variable instead:
 export SIO221A_ROOT="/wherever/you/put/SIO221a_Github_code_2026"
 ```
 
+### The quick way: one setup command
+
+If you'd rather not do the next two sections by hand, run this once:
+
+```bash
+bash ~/SIO221a_Github_code_2026/tools/sio221a-setup
+```
+
+It creates the conda environment, installs everything including the MATLAB kernel,
+and adds a `sio221a` command to your shell that launches JupyterLab correctly. Then
+open a **new** terminal and type `sio221a`.
+
+It's safe to run more than once, and it's the fastest way to set up a second computer.
+You still need MATLAB itself installed if you want the MATLAB notebooks.
+
 ### Python users
 
 Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html), then:

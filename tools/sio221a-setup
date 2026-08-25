@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+#
+# sio221a-setup -- set up a new computer to run the SIO221a notebooks.
+#
+# Run this once on any machine that has the class folder (via Google Drive,
+# git clone, or a memory stick).  It is safe to run more than once.
+#
+#   bash /path/to/SIO221a_Github_code_2026/tools/sio221a-setup
+#
+# What it does:
+#   1. Works out where this repo lives (it looks at its own location).
+#   2. Creates a conda environment called 'sio221a-jupyter' with JupyterLab,
+#      the scientific stack, RISE, and MathWorks' MATLAB kernel.
+#   3. Hardens the MATLAB kernelspec so the kernel works from ANY launcher
+#      (JupyterLab, VS Code, nbconvert) rather than only from an activated shell.
+#   4. Adds SIO221A_ROOT and the 'sio221a' alias to your shell startup file.
+#
+# What it deliberately does NOT do: install MATLAB, or touch your MATLAB
+# licence.  You need MATLAB R2020b or newer already installed and activated.
+
+set -uo pipefail
+
+ENV_NAME="${SIO221A_JUPYTER_ENV:-sio221a-jupyter}"
+
+# ---- 1. where does this repo live? -----------------------------------------
+# Resolve the directory containing this script, then go up one.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [ ! -f "$REPO_DIR/data/scripps_pier-2020.nc" ]; then
+    echo "error: $REPO_DIR does not look like the class repo." >&2
+    echo "       (expected to find data/scripps_pier-2020.nc inside it)" >&2
+    exit 1
+fi
+echo "Class repo : $REPO_DIR"
+
+# ---- 2. conda environment ---------------------------------------------------
+if ! command -v conda >/dev/null 2>&1; then
+    echo
+    echo "error: conda not found." >&2
+    echo "       Install Miniconda first: https://docs.conda.io/en/latest/miniconda.html" >&2
+    echo "       Then open a NEW terminal and run this script again." >&2
+    exit 1
+fi
+
+CONDA_BASE="$(conda info --base)"
+ENV_DIR="$CONDA_BASE/envs/$ENV_NAME"
+
+if [ -d "$ENV_DIR" ]; then
+    echo "Conda env  : $ENV_DIR (already exists, will update)"
+else
+    echo "Conda env  : creating $ENV_NAME ..."
+    conda create -y -n "$ENV_NAME" python=3.11 >/dev/null || exit 1
+fi
+
+echo "Installing packages (this takes a few minutes the first time) ..."
+"$ENV_DIR/bin/pip" install --quiet --upgrade \
+    jupyterlab jupyterlab-rise jupyter-matlab-proxy \
+    numpy scipy matplotlib netCDF4 xarray pandas || {
+        echo "error: pip install failed." >&2; exit 1; }
+
+# ---- 3. harden the MATLAB kernelspec ----------------------------------------
+# The kernel shells out to matlab-proxy-app, which lives in the env's bin/.
+# Baking the absolute interpreter path, PATH and the licence setting into the
+# kernelspec means the kernel works from any launcher, not just an activated
+# shell.  Without this, VS Code in particular fails with an unhelpful
+# "Failed to create matlab-proxy subprocess".
+KSPEC="$ENV_DIR/share/jupyter/kernels/jupyter_matlab_kernel/kernel.json"
+if [ -f "$KSPEC" ]; then
+    [ -f "$KSPEC.bak" ] || cp "$KSPEC" "$KSPEC.bak"
+    "$ENV_DIR/bin/python" - "$KSPEC" "$ENV_DIR" <<'PYEOF'
+import json, sys, glob
+kspec, envdir = sys.argv[1], sys.argv[2]
+k = json.load(open(kspec))
+mat = sorted(glob.glob('/Applications/MATLAB_R*.app/bin'), reverse=True)
+mat += sorted(glob.glob('/usr/local/MATLAB/R*/bin'), reverse=True)   # Linux
+k['argv'][0] = envdir + '/bin/python3'
+k['env'] = {
+    'PATH': ':'.join([envdir + '/bin'] + mat +
+                     ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']),
+    'MWI_USE_EXISTING_LICENSE': 'True',
+}
+json.dump(k, open(kspec, 'w'), indent=4)
+print('MATLAB     : kernelspec hardened' + (' (MATLAB at %s)' % mat[0] if mat else
+      ' -- WARNING: no MATLAB found in /Applications or /usr/local'))
+PYEOF
+else
+    echo "MATLAB     : kernelspec not found -- MATLAB notebooks will not run"
+fi
+
+# ---- 4. shell startup -------------------------------------------------------
+case "${SHELL##*/}" in
+    zsh)  RC="$HOME/.zshrc"  ;;
+    bash) RC="$HOME/.bashrc" ;;
+    *)    RC="$HOME/.profile";;
+esac
+touch "$RC"
+
+if grep -q 'SIO221A_ROOT' "$RC" 2>/dev/null; then
+    echo "Shell      : $RC already mentions SIO221A_ROOT -- leaving it alone"
+    echo "             (check that it points at $REPO_DIR)"
+else
+    {
+        echo ""
+        echo "# SIO221a class repo and launcher (added by tools/sio221a-setup)"
+        echo "export SIO221A_ROOT=\"$REPO_DIR\""
+        echo "export SIO221A_JUPYTER_ENV=\"$ENV_NAME\""
+        echo "alias sio221a='\"\$SIO221A_ROOT/tools/sio221a-lab\"'"
+    } >> "$RC"
+    echo "Shell      : added SIO221A_ROOT and the 'sio221a' alias to $RC"
+fi
+
+# MATLAB's own startup, so MATLAB knows the path even when launched from the GUI.
+MSTART="$HOME/Documents/MATLAB/startup.m"
+mkdir -p "$(dirname "$MSTART")"
+if [ -f "$MSTART" ] && grep -q 'SIO221A_ROOT' "$MSTART" 2>/dev/null; then
+    echo "MATLAB     : startup.m already sets SIO221A_ROOT"
+else
+    Q="'"      # a single quote, so MATLAB gets setenv('NAME','value')
+    printf '\n%%SIO221a: tell the class notebooks where the repo lives.\nsetenv(%sSIO221A_ROOT%s, %s%s%s);\n' \
+        "$Q" "$Q" "$Q" "$REPO_DIR" "$Q" >> "$MSTART"
+    echo "MATLAB     : added setenv(SIO221A_ROOT) to $MSTART"
+fi
+
+echo
+echo "Done.  Open a NEW terminal, then run:"
+echo
+echo "    sio221a"
+echo
