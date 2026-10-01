@@ -79,6 +79,70 @@ submission — I'll read it and comment there.
 
 ---
 
+## Doing this from VS Code instead of the terminal
+
+Everything above is just git, so you can drive it from VS Code's Source Control
+panel (the branching icon in the left sidebar) instead of typing commands. The
+one-time setup and every-week loop map over like this:
+
+**Fork and clone.** Fork on the GitHub web page as above (VS Code can't do that
+part — forking is a GitHub server-side operation, not a git command). Then:
+`Cmd/Ctrl+Shift+P` → **Git: Clone** → paste your fork's URL
+(`https://github.com/YOUR-USERNAME/SIO221a_Github_code_2026.git`) → pick where to
+put it (use `~/SIO221a_Github_code_2026` so the notebooks' setup cell finds it) →
+open the folder when VS Code asks.
+
+**Add the upstream remote.** Source Control panel → **...** (More Actions) →
+**Remote** → **Add Remote** → name it `upstream`, URL
+`https://github.com/malford11/SIO221a_Github_code_2026.git`.
+
+**Tell git who you are**, and do any other one-time setup, by opening a terminal
+*inside* VS Code (Terminal menu → New Terminal) and running the same commands
+listed above — VS Code's terminal is a real shell, nothing special about it.
+
+**Get the new lectures:** click the branch name in the bottom-left status bar,
+switch to `main`, then **...** → **Pull from...** → `upstream` → `main`. Then
+**...** → **Push to...** → `origin` → `main` to update your fork.
+
+**Make a branch:** click the branch name in the status bar → **Create new
+branch...** → name it (e.g. `hw3`).
+
+**Do the work**, same as always — edit the notebook in `submissions/YOUR-NAME/`.
+
+**Commit:** the Source Control panel lists changed files. Hover a file and click
+**+** to stage it (or **Stage All Changes**), type a real commit message in the
+box above, and click the checkmark to commit.
+
+**Push and open a pull request:** click **Sync Changes** (or **...** → **Push**).
+The first time you push a new branch, VS Code offers to **Publish Branch** — say
+yes, that's your `git push origin hw3`. If you have the "GitHub Pull Requests and
+Issues" extension installed, VS Code will offer to open a PR for you right after;
+otherwise follow the link GitHub gives you, same as the command-line flow — base
+`malford11/SIO221a_Github_code_2026` `main`, compare your branch.
+
+---
+
+## Doing this from the GitHub web interface
+
+You *can* fork, edit, and commit entirely in the browser — useful for a quick fix,
+not for actual assignments, because **the web interface can't run your
+notebook.** There's no Python or MATLAB kernel behind it, so anything that needs
+execution still has to happen on your own machine.
+
+What works in the browser: fork the repo (the **Fork** button), then either edit
+a file directly on GitHub (open it in your fork, click the pencil icon) or press
+`.` on any page in your fork to open `github.dev`, a full VS Code-like editor
+running in the browser with its own Source Control panel — same stage/commit/push
+steps as real VS Code above, no install required. Either way, when you commit you
+can choose "Create a new branch for this commit and start a pull request," which
+does the branch-and-PR step for you.
+
+Use this for things like fixing a typo in your name or a markdown cell. For
+problem sets, run the notebook locally, then push and open the PR from the
+terminal or VS Code.
+
+---
+
 ## Things worth knowing
 
 **Don't commit data files.** The data you need is already in `data/`. If an
